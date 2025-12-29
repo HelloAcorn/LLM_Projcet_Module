@@ -64,6 +64,16 @@ LLM_Project_Module/
 
 ---
 
+## 문서화 규칙 (Documentation Rules)
+
+**Spec First & Sync Policy**:
+1.  모든 기능 변경 및 추가 작업은 `docs/`의 Spec 문서를 기준으로 수행해야 합니다.
+2.  **코드를 수정한 후에는 반드시 관련 Spec 문서(`docs/en`, `docs/kr`)를 확인하고 동기화해야 합니다.**
+3.  Spec 문서의 변경이 필요한 경우, **영문(en)과 국문(kr) 버전을 동시에 수정**해야 합니다.
+4.  구현 코드와 Spec 문서가 일치하지 않는 상태(Documentation Drift)는 엄격히 금지됩니다.
+
+---
+
 ## 금지 사항
 
 **하지 말 것**:

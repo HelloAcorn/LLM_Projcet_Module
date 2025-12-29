@@ -3,11 +3,6 @@ LLM 팩토리 모듈
 
 이 모듈은 다양한 LLM(Large Language Model) 제공자의 인스턴스를 생성하는 팩토리 패턴을 구현합니다.
 
-지원되는 제공자:
-- OpenAI: gpt-5-mini, gpt-5
-- Anthropic: claude-sonnet-4-5
-- Gemini: gemini-2.5-flash, gemini-2.5-pro
-
 각 제공자별로 모델, 온도 등의 파라미터를 설정할 수 있으며,
 적절한 API 키가 .api_key 파일을 통해 제공되어야 합니다.
 
@@ -18,17 +13,18 @@ from typing import Literal, Optional, Any, Union, Dict
 from langchain.chat_models.base import BaseChatModel
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, HarmBlockThreshold, HarmCategory
 from pydantic import BaseModel, Field, create_model
 
 from app.core.settings import settings
+from app.utils.decorators import measure_cost
 
 ProviderType = Literal["openai", "anthropic", "gemini"]
 
 # 기본 JSON 스키마를 위한 Pydantic 모델 (Gemini 호환성)
 class DefaultJSONResponse(BaseModel):
-    """기본 JSON 응답 모델 (모든 필드 허용)"""
-    content: Any = Field(default=None, description="응답 내용")
+    """기본 JSON 응답 모델"""
+    response: str = Field(description="The main response content")
 
 DEFAULT_JSON_SCHEMA = DefaultJSONResponse
 
@@ -44,9 +40,10 @@ class LLMFactory:
     }
     
     @staticmethod
+    @measure_cost
     def create_openai(
         model: str = "gpt-5-mini",
-        reasoning_effort: str = "minimal",
+        reasoning_effort: str = "medium",
         temperature: float = 1.0,
         streaming: bool = False,
         json_schema: Optional[Union[Dict[str, Any], BaseModel]] = None,
@@ -55,29 +52,41 @@ class LLMFactory:
         if not settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY가 설정되지 않았습니다. .api_key 파일을 확인하세요.")
         
+        # [Fix] Extract callbacks FIRST to avoid Pydantic "supplied twice" error
+        callbacks = kwargs.pop("callbacks", [])
+        
         # GPT-5 계열만 reasoning_effort 파라미터 사용
         if model.startswith("gpt-5"):
             model_kwargs = {
                 "reasoning_effort": reasoning_effort,
             }
+            # [Fix] gpt-5 계열은 temperature 1.0 고정 (API 제약)
+            temperature = 1.0
+            # Add remaining kwargs (callbacks already popped)
             model_kwargs.update(kwargs)
         else:
             # GPT-4 계열은 reasoning_effort 없이
-            model_kwargs = kwargs
+            model_kwargs = kwargs.copy()
         
         llm = ChatOpenAI(
             model=model,
             api_key=settings.OPENAI_API_KEY,
             temperature=temperature,
             streaming=streaming,
-            model_kwargs=model_kwargs
+            model_kwargs=model_kwargs,
+            callbacks=callbacks
         )
         
         # Structured output 적용 (기본 JSON 스키마 또는 커스텀 스키마)
+        # include_raw=True: 원본 AIMessage도 반환하여 token_usage 추출 가능
         schema = json_schema if json_schema is not None else DEFAULT_JSON_SCHEMA
-        return llm.with_structured_output(schema)
+        runnable = llm.with_structured_output(schema, include_raw=True)
+        
+        # 재시도 로직 추가 (Gemini 빈 응답 이슈 대응)
+        return runnable.with_retry(stop_after_attempt=2)
     
     @staticmethod
+    @measure_cost
     def create_anthropic(
         model: str = "claude-sonnet-4-5",
         temperature: float = 0.7,
@@ -88,19 +97,28 @@ class LLMFactory:
         if not settings.ANTHROPIC_API_KEY:
             raise ValueError("ANTHROPIC_API_KEY가 설정되지 않았습니다. .api_key 파일을 확인하세요.")
         
+        # [Fix] Extract callbacks FIRST to avoid Pydantic "supplied twice" error
+        callbacks = kwargs.pop("callbacks", [])
+        
         llm = ChatAnthropic(
             model=model,
             anthropic_api_key=settings.ANTHROPIC_API_KEY,
             temperature=temperature,
             streaming=streaming,
+            callbacks=callbacks,
             **kwargs
         )
         
         # Structured output 적용 (기본 JSON 스키마 또는 커스텀 스키마)
+        # include_raw=True: 원본 AIMessage도 반환하여 token_usage 추출 가능
         schema = json_schema if json_schema is not None else DEFAULT_JSON_SCHEMA
-        return llm.with_structured_output(schema)
+        runnable = llm.with_structured_output(schema, include_raw=True)
+        
+        # 재시도 로직 추가 (Gemini 빈 응답 이슈 대응)
+        return runnable.with_retry(stop_after_attempt=2)
     
     @staticmethod
+    @measure_cost
     def create_gemini(
         model: str = "gemini-2.5-flash",
         temperature: float = 1.0,
@@ -113,6 +131,17 @@ class LLMFactory:
         if not settings.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다. .api_key 파일을 확인하세요.")
         
+        # [Fix] Extract callbacks FIRST to avoid Pydantic "supplied twice" error
+        callbacks = kwargs.pop("callbacks", [])
+        
+        # 안전 설정: 모든 차단 해제 (테스트용)
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
         llm = ChatGoogleGenerativeAI(
             model=model,
             google_api_key=settings.GEMINI_API_KEY,
@@ -120,12 +149,18 @@ class LLMFactory:
             top_p=top_p,
             top_k=top_k,
             streaming=streaming,
+            safety_settings=safety_settings,
+            callbacks=callbacks,
             **kwargs
         )
         
         # Structured output 적용 (기본 JSON 스키마 또는 커스텀 스키마)
+        # include_raw=True: 원본 AIMessage도 반환하여 token_usage 추출 가능
         schema = json_schema if json_schema is not None else DEFAULT_JSON_SCHEMA
-        return llm.with_structured_output(schema)
+        runnable = llm.with_structured_output(schema, include_raw=True)
+        
+        # 재시도 로직 추가 (Gemini 빈 응답 이슈 대응)
+        return runnable.with_retry(stop_after_attempt=2)
     
     @staticmethod
     def create(
@@ -143,7 +178,7 @@ class LLMFactory:
         # 제공자별 인스턴스 생성
         if provider == "openai":
             # GPT-5 추론형 모델: reasoning_effort 사용
-            reasoning_effort = kwargs.pop('reasoning_effort', 'minimal')
+            reasoning_effort = kwargs.pop('reasoning_effort', 'medium')
             return LLMFactory.create_openai(
                 model=model, 
                 reasoning_effort=reasoning_effort,
