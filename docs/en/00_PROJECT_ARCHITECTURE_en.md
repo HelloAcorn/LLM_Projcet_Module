@@ -43,8 +43,13 @@ LLM_Projcet_Module/
 ├── src/                # Core Logic and Modules
 │   ├── core/           # Configuration management (Settings, API Keys)
 │   ├── llm/            # LLM Factory (OpenAI, Anthropic, Gemini integration)
-│   ├── prompts/        # Prompt template management (YAML)
-│   ├── utils/          # Utilities (Cost tracking callbacks, decorators, etc.)
+│   ├── prompts/        # Prompt template management
+│   │   ├── templates/  # YAML File Repository (system.yaml, etc.)
+│   │   └── prompt_manager.py  # Template Loader & Utilities
+│   ├── utils/          # Utilities
+│   │   ├── logger.py       # Singleton Logger
+│   │   ├── callbacks.py    # Cost Tracking Callbacks
+│   │   └── decorators.py   # Utility Decorators
 │   └── (modules)       # agents, retrieval, vectorstore (Scalable modules)
 ├── logs/               # System logs (cost.jsonl, api_requests.jsonl)
 ├── docs/               # Project documentation (KR/EN)
@@ -55,7 +60,8 @@ LLM_Projcet_Module/
 ## 4. Key Components
 
 1. **LLM Factory (`src/llm/`)**: Abstracted interface for multiple LLM providers, enabling consistent API calls with built-in support for Structured Output.
-2. **Cost Tracking (`src/utils/`)**: A callback-based system that calculates and logs token usage and costs for every LLM call in real-time.
-3. **Admin Dashboard (`streamlit/`)**: Analyzes data from the `logs/` directory to visualize latency, success rates, and costs.
-4. **API Middleware (`api/`)**: Automatically records performance metrics for every HTTP request to ensure high observability.
+2. **Prompt Management (`src/prompts/`)**: Manages prompts based on YAML files, loading them at runtime and substituting variables via `PromptManager`.
+3. **Cost Tracking (`src/utils/`)**: A callback-based system that calculates and logs token usage and costs for every LLM call in real-time.
+4. **Admin Dashboard (`streamlit/`)**: Analyzes data from the `logs/` directory to visualize latency, success rates, and costs.
+5. **API Middleware (`api/`)**: Automatically records performance metrics for every HTTP request to ensure high observability.
 

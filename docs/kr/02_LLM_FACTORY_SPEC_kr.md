@@ -31,7 +31,23 @@ LLMFactory.create(
 ## 4. 비용 및 관측성 (Cost & Observability)
 팩토리는 사용량과 비용을 추적하기 위해 자동으로 관측성 후크(Hook)를 주입합니다.
 
-### 4.1. 비용 로깅 (`logs/cost.jsonl`)
+### 4.1. 가격 정책 (Pricing Policy)
+**단위: USD per 1M tokens** (Note: 예상 가격이며 프로바이더 정책에 따라 변동 가능)
+
+| Provider | Model ID | Input Cost ($) | Output Cost ($) | 비고 |
+|---|---|---|---|---|
+| **OpenAI** | `gpt-5.2-chat-latest` | 1.75 | 14.00 | Instant |
+| | `gpt-5.2` | 1.75 | 14.00 | Thinking |
+| | `gpt-5-mini` | 0.50 | 2.00 | Legacy Mock |
+| | `gpt-4o-mini` | 0.15 | 0.60 | Legacy |
+| **Anthropic** | `claude-opus-4-5` | 15.00 | 75.00 | Mock |
+| | `claude-sonnet-4-5` | 4.00 | 16.00 | Mock |
+| | `claude-haiku-4-5` | 0.25 | 1.25 | Mock |
+| **Gemini** | `gemini-3-pro-preview` | 4.00 | 12.00 | Mock |
+| | `gemini-3-flash-preview` | 0.40 | 1.20 | Mock |
+| | `gemini-2.5-flash-lite` | 0.10 | 0.40 | Mock |
+
+### 4.2. 비용 로깅 (`logs/cost.jsonl`)
 모든 LLM 호출에 대해 토큰 사용량과 추정 비용이 기록됩니다.
 
 ```json
