@@ -43,8 +43,13 @@ LLM_Projcet_Module/
 ├── src/                # 핵심 로직 및 모듈 (Core Logic)
 │   ├── core/           # 설정 관리 (Settings, API Keys)
 │   ├── llm/            # LLM Factory (OpenAI, Anthropic, Gemini 통합)
-│   ├── prompts/        # 프롬프트 템플릿 관리 (YAML)
-│   ├── utils/          # 유틸리티 (비용 추적 콜백, 데코레이터 등)
+│   ├── prompts/        # 프롬프트 템플릿 관리
+│   │   ├── templates/  # YAML 파일 저장소 (system.yaml 등)
+│   │   └── prompt_manager.py  # 템플릿 로더 및 유틸리티
+│   ├── utils/          # 유틸리티 (Utilities)
+│   │   ├── logger.py       # 싱글톤 로거
+│   │   ├── callbacks.py    # 비용 추적 콜백
+│   │   └── decorators.py   # 유틸리티 데코레이터
 │   └── (modules)       # agents, retrieval, vectorstore (확장용 모듈)
 ├── logs/               # 시스템 로그 (cost.jsonl, api_requests.jsonl)
 ├── docs/               # 프로젝트 문서 (KR/EN)
@@ -55,7 +60,8 @@ LLM_Projcet_Module/
 ## 4. 핵심 컴포넌트 (Key Components)
 
 1. **LLM Factory (`src/llm/`)**: 다양한 LLM 제공자의 API를 추상화하여 동일한 방식으로 호출할 수 있게 합니다. Structured Output을 기본으로 지원합니다.
-2. **Cost Tracking (`src/utils/`)**: 콜백 시스템을 통해 모든 LLM 호출의 토큰 사용량과 비용을 실시간으로 계산하고 로깅합니다.
-3. **Admin Dashboard (`streamlit/`)**: `logs/` 폴더의 데이터를 분석하여 지연 시간(Latency), 성공률, 비용을 시각화합니다.
-4. **API Middleware (`api/`)**: 모든 HTTP 요청의 성능 지표를 자동으로 기록하여 관측성을 확보합니다.
+2. **Prompt Management (`src/prompts/`)**: YAML 파일 기반으로 프롬프트를 관리하며, `PromptManager`를 통해 런타임에 로드하고 변수를 치환합니다.
+3. **Cost Tracking (`src/utils/`)**: 콜백 시스템을 통해 모든 LLM 호출의 토큰 사용량과 비용을 실시간으로 계산하고 로깅합니다.
+4. **Admin Dashboard (`streamlit/`)**: `logs/` 폴더의 데이터를 분석하여 지연 시간(Latency), 성공률, 비용을 시각화합니다.
+5. **API Middleware (`api/`)**: 모든 HTTP 요청의 성능 지표를 자동으로 기록하여 관측성을 확보합니다.
 
