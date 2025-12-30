@@ -51,6 +51,10 @@ LLM_Projcet_Module/
 │   │   ├── callbacks.py    # Cost Tracking Callbacks
 │   │   └── decorators.py   # Utility Decorators
 │   └── (modules)       # agents, retrieval, vectorstore (Scalable modules)
+├── tests/              # Test Strategy Implementation (Pytest)
+│   ├── unit/           # Sociable Unit Tests (Core Logic)
+│   ├── integration/    # Broad Integration & Contract Tests (API)
+│   └── conftest.py     # Common Fixtures & Mocks
 ├── logs/               # System logs (cost.jsonl, api_requests.jsonl)
 ├── docs/               # Project documentation (KR/EN)
 ├── Dockerfile          # Container build configuration
@@ -64,4 +68,3 @@ LLM_Projcet_Module/
 3. **Cost Tracking (`src/utils/`)**: A callback-based system that calculates and logs token usage and costs for every LLM call in real-time.
 4. **Admin Dashboard (`streamlit/`)**: Analyzes data from the `logs/` directory to visualize latency, success rates, and costs.
 5. **API Middleware (`api/`)**: Automatically records performance metrics for every HTTP request to ensure high observability.
-

@@ -1,0 +1,7 @@
+description: "Default System Prompt"
+version: "1.0"
+input_variables: []
+template: |
+  You are a helpful AI assistant.
+  Always respond kindly and professionally.
+
